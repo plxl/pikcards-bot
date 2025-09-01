@@ -6,24 +6,33 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const commands = [];
-// Grab all the command folders from the commands directory you created earlier
 const foldersPath = path.join(__dirname, 'commands');
-const commandFolders = fs.readdirSync(foldersPath);
 
-for (const folder of commandFolders) {
-    // Grab all the command files from the commands directory you created earlier
-    const commandsPath = path.join(foldersPath, folder);
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    // Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+function loadCommandsToArray(folderPath) {
+    const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
+
     for (const file of commandFiles) {
-        const filePath = path.join(commandsPath, file);
+        const filePath = path.join(folderPath, file);
         const command = require(filePath);
+
         if ('data' in command && 'execute' in command) {
             commands.push(command.data.toJSON());
-        }
-        else {
+        } else {
             console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
         }
+    }
+}
+
+const entries = fs.readdirSync(foldersPath, { withFileTypes: true });
+
+// Load files in root of "commands"
+loadCommandsToArray(foldersPath);
+
+// Load files in subfolders of "commands"
+for (const entry of entries) {
+    if (entry.isDirectory()) {
+        const subFolderPath = path.join(foldersPath, entry.name);
+        loadCommandsToArray(subFolderPath);
     }
 }
 
