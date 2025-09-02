@@ -5,6 +5,8 @@ module.exports = {
         .setName('ping')
         .setDescription('Replies with Pong!'),
     async execute(interaction) {
-        await interaction.reply(`Pong! Latency: ${Date.now() - interaction.createdTimestamp}ms`);
+        const latency = interaction.client.ws.ping;
+        if (latency == -1) await interaction.reply('Pong! Discord hasn\'t measured my ping yet, try again later.');
+        else await interaction.reply(`Pong! Latency: ${latency}ms`);
     },
 };
