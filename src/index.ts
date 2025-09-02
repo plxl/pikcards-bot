@@ -1,9 +1,17 @@
-const fs = require('node:fs');
-const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
-const token = process.env.TOKEN;
+import fs from 'node:fs';
+import path from 'node:path';
+import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const token = process.env.TOKEN!;
+if (!token) throw new Error('Discord bot token not found in .env!')
+
+interface ClientWithCommands extends Client {
+    commands: Collection<string, any>;
+}
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds] }) as ClientWithCommands;
 
 client.once(Events.ClientReady, readyClient => {
     console.log(`Ready! Logged in as ${readyClient.user.tag}`);
@@ -11,20 +19,25 @@ client.once(Events.ClientReady, readyClient => {
 
 client.commands = new Collection();
 
+
+
 const foldersPath = path.join(__dirname, 'commands');
 
-function loadCommandsFrom(folderPath) {
+function loadCommandsFrom(folderPath: string) {
     const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
 
     for (const file of commandFiles) {
         const filePath = path.join(folderPath, file);
-        const command = require(filePath);
+        import(filePath).then((commandModule => {
+            const command = commandModule.default ?? commandModule;
+            if ('data' in command && 'execute' in command) {
+                client.commands.set(command.data.name, command);
+            } else {
+                console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+            }
+        }));
 
-        if ('data' in command && 'execute' in command) {
-            client.commands.set(command.data.name, command);
-        } else {
-            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-        }
+        
     }
 }
 
@@ -41,9 +54,9 @@ for (const entry of entries) {
     }
 }
 
-client.on(Events.InteractionCreate, async interaction => {
+client.on(Events.InteractionCreate, async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
-    const command = interaction.client.commands.get(interaction.commandName);
+    const command = client.commands.get(interaction.commandName);
 
     if (!command) {
         console.error(`No command matching ${interaction.commandName} was found.`);
@@ -51,7 +64,7 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
     try {
-        await command.execute(interaction);
+        await command.execute(interaction as ChatInputCommandInteraction);
     }
     catch (error) {
         console.error(error);
