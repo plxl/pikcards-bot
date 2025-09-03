@@ -24,7 +24,7 @@ client.commands = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
 
 function loadCommandsFrom(folderPath: string) {
-    const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
+    const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
 
     for (const file of commandFiles) {
         const filePath = path.join(folderPath, file);
