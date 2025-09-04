@@ -12,7 +12,13 @@ module.exports = {
                 .setRequired(true)),
     async execute(interaction) {
         const commandName = interaction.options.getString('command', true).toLowerCase();
-        const commandFile = path.join(__dirname, commandName + '.js');
+        let commandFile = path.join(__dirname, commandName + '.js');
+        try {
+            await fs.access(commandFile, fs.constants.F_OK);
+        }
+        catch {
+            commandFile = commandFile.substring(0, commandFile.length - 2) + 'ts';
+        }
 
         try {
             // make sure command file exists
