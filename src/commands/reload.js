@@ -11,6 +11,7 @@ module.exports = {
                 .setDescription('The command to reload.')
                 .setRequired(true)),
     async execute(interaction) {
+        if (interaction.user.id !== process.env.DEV_USER_ID) return;
         const commandName = interaction.options.getString('command', true).toLowerCase();
         let commandFile = path.join(__dirname, commandName + '.js');
         try {
