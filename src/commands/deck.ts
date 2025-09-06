@@ -1,9 +1,21 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, ComponentType, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageCreateOptions, DMChannel, NewsChannel, TextChannel, InteractionUpdateOptions, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, ComponentType, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageCreateOptions, DMChannel, NewsChannel, TextChannel, InteractionUpdateOptions, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags } from 'discord.js';
 import path from 'path';
 import fs from 'fs';
 
-const userCards = new Map<string, string[]>();
-const userChannel = new Map<string, TextChannel | DMChannel | NewsChannel>();
+interface CardWithMessage {
+    card: string,
+    message: Message,
+}
+
+interface DeckSession {
+    userId: string;
+    channel: TextChannel | DMChannel | NewsChannel | null;
+    deck: string[];
+    hand: CardWithMessage[];
+}
+
+const DECK_FILE = path.join(process.cwd(), 'storage', 'deck-sessions.json');
+let deckSessions: DeckSession[] | null;
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,41 +27,100 @@ module.exports = {
                 .setRequired(true)),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        const response = interaction.options.getString('cards', true).toLowerCase();
-        let cards = response.split(',').map(s => s.trim());
-        if (cards.length != 40) {
-            return await interaction.reply(`A deck needs exactly 40 cards, counted ${cards.length}`);
+        const userId = interaction.user.id;
+        const username = interaction.user.username;
+
+
+        // check if there is a previous deckSessions to load, if not, creates one
+        if (!deckSessions) {
+            try {
+                // use synchronous to avoid race condition with others using same command simultaneously
+                // this should only happen once when the bot first starts anyway
+                if (!fs.existsSync(DECK_FILE)) {
+                    throw new Error('deck_sessions_missing');
+                }
+                const rawData = fs.readFileSync(DECK_FILE, 'utf-8');
+                deckSessions = JSON.parse(rawData);
+                console.log(`Loaded ${deckSessions?.length} deck sessions from "${DECK_FILE}"`)
+            }
+            catch (err: any) {
+                if (err.message == 'deck_sessions_missing') {
+                    // deck-sessions.json didn't exist
+                    console.log('Previous deck-sessions.json was not found, starting with empty array');
+                }
+                else if (err instanceof SyntaxError) {
+                    // JSON parsing likely failed
+                    console.error('deck-sessions.json is malformed, starting with empty array');
+                }
+                else {
+                    // any other potential errors
+                    console.error('Failed to load deck-sessions.json:', err);
+                    console.log('Due to above error with deck-sessions.json, starting with empty array');
+                }
+                deckSessions = [];
+            }
         }
 
-        // shuffle the deck and store it in userCards
-        cards = [...cards].sort(() => Math.random() - 0.5);
-        userCards.set(interaction.user.id, cards);
 
-        // get the channel to send images in
-        // so not everything is a followup
-        let channel = interaction.channel as TextChannel | DMChannel | NewsChannel | null;
-        if (!channel) {
-            const fetched = await interaction.client.channels.fetch(interaction.channelId);
-            if (fetched?.isTextBased()) {
-                channel = fetched as TextChannel | DMChannel | NewsChannel;
-            }
-            if (!channel) {
-                await interaction.reply('I may be lacking permissions to read/send in this text channel.');
-                return;
-            }
+        // get the channel the command was used in
+        const fetchedChannel = interaction.channel
+            ?? await interaction.client.channels
+                .fetch(interaction.channelId)
+                .catch(() => null);
+        
+        if (!fetchedChannel || !fetchedChannel.isTextBased()) {
+            return interaction.reply({
+                content: 'ERROR: I may be lacking View Channel or similar permissions.',
+                flags: MessageFlags.Ephemeral });
         }
-        userChannel.set(interaction.user.id, channel);
+        const channel = fetchedChannel as TextChannel | DMChannel | NewsChannel;
 
+
+        // check if the user has an existing session, if not, create one
+        let deckSession = deckSessions!.find(session => session.userId == userId);
+        if (deckSession) {
+            console.log(`Restoring deck session for @${username} [${userId}]`);
+            // TODO: Restore deck from json in the event of a bot crash
+        }
+        else {
+            console.log(`No deck session found for @${username} [${userId}]... creating one now`);
+            deckSession = {
+                userId,
+                channel,
+                deck: [],
+                hand: [],
+            } as DeckSession
+            deckSessions!.push(deckSession);
+        }
+
+
+        // TODO: switch to option string instead of default deck for testing
+        // let input = interaction.options.getString('cards', true)
+        let deckInput = 'Red Pikmin, Red Pikmin, Red Pikmin, Red Pikmin, Red Onion, Red Onion, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Onion, Yellow Onion, Doodlebug, Doodlebug, Doodlebug, Doodlebug, Bulborb Larva, Bulborb Larva, Bulborb Larva, Bulborb Larva, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Stellar Orb, Stellar Orb, Stellar Orb, Stellar Orb, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Sagittarius, Sagittarius, Survival Series, Survival Series'
+            .toLowerCase()
+            .split(',')
+            .map(s => s.trim());
+        if (deckInput.length != 40) {
+            return interaction.reply(`A deck needs exactly 40 cards, counted ${deckInput.length} cards.`);
+        }
+
+        // shuffle the deck
+        deckSession.deck = [...deckInput].sort(() => Math.random() - 0.5);
+
+        // define local references
+        const deck = deckSession.deck;
+        const hand = deckSession.hand;
+
+        // initial reply
         await interaction.reply('Your deck has been shuffled! I will now show you your first 4 cards, ' + 
             'and you may choose to re-draw each one, or not.');
 
         // hand out starting cards and allow re-drawing
-        const startingCards: string[] = [];
-        const collectors: any[] = [];
-        const handMsgs: any[] = [];
+        // const startingCards: string[] = [];
+        // const collectors: any[] = [];
+        // const handMsgs: any[] = [];
         for (let i = 0; i < 4; i++) {
-            const card = cards.shift()!;
-            startingCards.push(card);
+            const card = deck.shift()!;
 
             const btnRedraw = new ButtonBuilder()
                 .setCustomId(`redraw_${i}`)
@@ -64,11 +135,10 @@ module.exports = {
                 ? { components: [row], files: [cardImg] }
                 : { components: [row], content: card };
 
-            const cardMsg = await channel.send(cardMsgContent);
-            handMsgs.push(cardMsg);
+            const message = await channel.send(cardMsgContent);
+            hand.push({ card, message });
 
-            const collector = cardMsg.createMessageComponentCollector({ componentType: ComponentType.Button });
-            collectors.push(collector);
+            const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button });
 
             collector.on('collect', async (btnInteraction: ButtonInteraction) => {
                 if (btnInteraction.user.id !== interaction.user.id) {
@@ -76,12 +146,12 @@ module.exports = {
                 }
 
                 if (btnInteraction.customId == `redraw_${i}`) {
-                    const redrawnCard = cards.shift()!;
+                    const redrawnCard = deck.shift()!;
                     // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
-                    const reinsertIndex = Math.floor(Math.random() * (cards.length - 10)) + 10;
+                    const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
 
-                    cards.splice(reinsertIndex, 0, startingCards[i]);
-                    startingCards[i] = redrawnCard;
+                    deck.splice(reinsertIndex, 0, hand[i].card);
+                    hand[i].card = redrawnCard;
 
                     const redrawnCardImg = getCardImage(redrawnCard);
                     
@@ -112,11 +182,11 @@ module.exports = {
             }
 
             if (btnInteraction.customId == 'continue') {
-                collectors.forEach(collector => {
-                    if (collector && !collector.ended) collector.stop();
-                })
-                handMsgs.forEach(msg => {
-                    msg.edit({
+                // collectors.forEach(collector => {
+                //     if (collector && !collector.ended) collector.stop();
+                // })
+                hand.forEach(({ message }) => {
+                    message.edit({
                         components: [],
                     })
                 })
@@ -143,21 +213,13 @@ module.exports = {
     async createInteraction(interaction: Interaction) {
         if (interaction.isModalSubmit()) {
             if (interaction.customId == 'deck_modal_fifth') {
-                if (!userCards.has(interaction.user.id)) return;
-                const cards = userCards.get(interaction.user.id);
-                const card = interaction.fields.getTextInputValue('txt_fifth')
-                    ?.toLowerCase()
-                    .trim();
+                const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
+                if (!deckSession) return;
+                const card = interaction.fields.getTextInputValue('txt_fifth')?.toLowerCase().trim();
                 const cardImg = getCardImage(card);
-                // const row = new ActionRowBuilder<ButtonBuilder>().addComponents();
-                const cardMsgContent: MessageCreateOptions = cardImg
+                await deckSession.channel?.send(cardImg
                     ? { components: [], files: [cardImg] }
-                    : { components: [], content: card };
-
-                if (userChannel.has(interaction.user.id)) {
-                    const channel = userChannel.get(interaction.user.id);
-                    await channel?.send(cardMsgContent);
-                }
+                    : { components: [], content: card });
             }
         }
     },
