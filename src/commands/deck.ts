@@ -1,6 +1,9 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, ComponentType, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageCreateOptions, DMChannel, NewsChannel, TextChannel, InteractionUpdateOptions } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, ComponentType, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageCreateOptions, DMChannel, NewsChannel, TextChannel, InteractionUpdateOptions, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction } from 'discord.js';
 import path from 'path';
 import fs from 'fs';
+
+const userCards = new Map<string, string[]>();
+const userChannel = new Map<string, TextChannel | DMChannel | NewsChannel>();
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -15,9 +18,12 @@ module.exports = {
         const response = interaction.options.getString('cards', true).toLowerCase();
         let cards = response.split(',').map(s => s.trim());
         if (cards.length != 40) {
-            await interaction.reply(`A deck needs exactly 40 cards, counted ${cards.length}`);
-            return;
+            return await interaction.reply(`A deck needs exactly 40 cards, counted ${cards.length}`);
         }
+
+        // shuffle the deck and store it in userCards
+        cards = [...cards].sort(() => Math.random() - 0.5);
+        userCards.set(interaction.user.id, cards);
 
         // get the channel to send images in
         // so not everything is a followup
@@ -32,9 +38,8 @@ module.exports = {
                 return;
             }
         }
+        userChannel.set(interaction.user.id, channel);
 
-        // shuffle the deck
-        cards = [...cards].sort(() => Math.random() - 0.5);
         await interaction.reply('Your deck has been shuffled! I will now show you your first 4 cards, ' + 
             'and you may choose to re-draw each one, or not.');
 
@@ -115,8 +120,46 @@ module.exports = {
                         components: [],
                     })
                 })
+
+                const retryModal = new ModalBuilder()
+                    .setCustomId('deck_modal_fifth')
+                    .setTitle('Pikcards')
+                    .addComponents(
+                        new ActionRowBuilder<TextInputBuilder>().addComponents(
+                            new TextInputBuilder()
+                                .setCustomId('txt_fifth')
+                                .setLabel('Select your Fifth Card from your deck:')
+                                .setStyle(TextInputStyle.Short)
+                                .setRequired(true),
+                        ),
+                    );
+
+                await btnInteraction.showModal(retryModal);
+                await btnInteraction.deleteReply();
             }
         });
+    },
+
+    async createInteraction(interaction: Interaction) {
+        if (interaction.isModalSubmit()) {
+            if (interaction.customId == 'deck_modal_fifth') {
+                if (!userCards.has(interaction.user.id)) return;
+                const cards = userCards.get(interaction.user.id);
+                const card = interaction.fields.getTextInputValue('txt_fifth')
+                    ?.toLowerCase()
+                    .trim();
+                const cardImg = getCardImage(card);
+                // const row = new ActionRowBuilder<ButtonBuilder>().addComponents();
+                const cardMsgContent: MessageCreateOptions = cardImg
+                    ? { components: [], files: [cardImg] }
+                    : { components: [], content: card };
+
+                if (userChannel.has(interaction.user.id)) {
+                    const channel = userChannel.get(interaction.user.id);
+                    await channel?.send(cardMsgContent);
+                }
+            }
+        }
     },
 };
 
