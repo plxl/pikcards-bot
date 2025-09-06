@@ -4,6 +4,12 @@ import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentB
 import dotenv from 'dotenv';
 dotenv.config();
 
+// override console.log to print the date at the start
+const originalLog = console.log;
+console.log = (...args) => {
+    originalLog(`[${new Date().toLocaleString()}]`, ...args);
+};
+
 const token = process.env.TOKEN!;
 if (!token) throw new Error('Discord bot token not found in .env!')
 
