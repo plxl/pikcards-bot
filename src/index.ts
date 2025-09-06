@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, Interaction } from 'discord.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -54,26 +54,25 @@ for (const entry of entries) {
     }
 }
 
-client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    const command = client.commands.get(interaction.commandName);
-
-    if (!command) {
-        console.error(`No command matching ${interaction.commandName} was found.`);
-        return;
-    }
-
+client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     try {
-        await command.execute(interaction as ChatInputCommandInteraction);
+        if (interaction.isChatInputCommand()) {
+            // slash commands
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return;
+            await command.execute(interaction as ChatInputCommandInteraction);
+        }
+        else {
+            // loop through all loaded commands and see if they want to handle it
+            for (const command of client.commands.values()) {
+                if (typeof command.createInteraction === 'function') {
+                    await command.createInteraction(interaction);
+                }
+            }
+        }
     }
     catch (error) {
         console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-        }
-        else {
-            await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-        }
     }
 });
 
