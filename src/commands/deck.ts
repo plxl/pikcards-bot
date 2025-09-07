@@ -29,6 +29,7 @@ module.exports = {
     async execute(interaction: ChatInputCommandInteraction) {
         const userId = interaction.user.id;
         const username = interaction.user.username;
+        const logName = `[@${username} | ${userId}]`;
 
 
         // check if there is a previous deckSessions to load, if not, creates one
@@ -69,6 +70,7 @@ module.exports = {
                 .catch(() => null);
         
         if (!fetchedChannel || !fetchedChannel.isTextBased()) {
+            console.log(`ERROR: ${logName} Failed to get fetch channel with ID ${interaction.channelId}`)
             return interaction.reply({
                 content: 'ERROR: I may be lacking View Channel or similar permissions.',
                 flags: MessageFlags.Ephemeral });
@@ -79,11 +81,11 @@ module.exports = {
         // check if the user has an existing session, if not, create one
         let deckSession = deckSessions!.find(session => session.userId == userId);
         if (deckSession) {
-            console.log(`Restoring deck session for @${username} [${userId}]`);
+            console.log(`${logName} Restoring deck session`);
             // TODO: Restore deck from json in the event of a bot crash
         }
         else {
-            console.log(`No deck session found for @${username} [${userId}]... creating one now`);
+            console.log(`${logName} No deck session found... creating one now`);
             deckSession = {
                 userId,
                 channel,
@@ -101,11 +103,13 @@ module.exports = {
             .split(',')
             .map(s => s.trim());
         if (deckInput.length != 40) {
+            console.log(`${logName} Deck had ${deckInput.length} entries when 40 were expected`)
             return interaction.reply(`A deck needs exactly 40 cards, counted ${deckInput.length} cards.`);
         }
 
         // shuffle the deck
         deckSession.deck = [...deckInput].sort(() => Math.random() - 0.5);
+        console.log(`${logName} Deck Shuffled:\n${deckSession.deck}\n---`)
 
         // define local references
         const deck = deckSession.deck;
@@ -116,9 +120,6 @@ module.exports = {
             'and you may choose to re-draw each one, or not.');
 
         // hand out starting cards and allow re-drawing
-        // const startingCards: string[] = [];
-        // const collectors: any[] = [];
-        // const handMsgs: any[] = [];
         for (let i = 0; i < 4; i++) {
             // pull card from deck
             const card = deck.shift()!;
@@ -139,6 +140,8 @@ module.exports = {
 
             // place card in hand with message
             hand.push({ card, message });
+
+            console.log(`${logName} Draw Card: ${card}`)
         }
 
         const btnContinue = new ButtonBuilder()
@@ -204,6 +207,9 @@ module.exports = {
                     const deck = deckSession.deck;
                     const hand = deckSession.hand;
 
+                    const username = interaction.user.username;
+                    const logName = `[@${username} | ${userId}]`;
+
                     const i = parseInt(variables); // this action should only have one variable: card index
 
                     const card = deck.shift()!;
@@ -213,6 +219,7 @@ module.exports = {
 
                     // insert card from hand into deck and update that hand's card name to the redrawn
                     deck.splice(reinsertIndex, 0, hand[i].card);
+                    const oldCard = hand[i].card; // for logging
                     hand[i].card = card;
 
                     const cardImg = getCardImage(card);
@@ -222,6 +229,8 @@ module.exports = {
                         files: cardImg ? [cardImg] : [],
                         components: [], // remove button by setting empty array
                     })
+
+                    console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
 
                     break;
             }
