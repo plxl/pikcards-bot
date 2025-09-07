@@ -120,48 +120,25 @@ module.exports = {
         // const collectors: any[] = [];
         // const handMsgs: any[] = [];
         for (let i = 0; i < 4; i++) {
+            // pull card from deck
             const card = deck.shift()!;
-
-            const btnRedraw = new ButtonBuilder()
-                .setCustomId(`redraw_${i}`)
-                .setLabel(`Redraw ${card}`)
-                .setStyle(ButtonStyle.Danger)
-
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(btnRedraw);
 
             const cardImg = getCardImage(card);
 
-            const cardMsgContent: MessageCreateOptions = cardImg
-                ? { components: [row], files: [cardImg] }
-                : { components: [row], content: card };
+            const message = await channel.send({
+                content: cardImg ? '' : card,
+                files: cardImg ? [cardImg] : [],
+                components: [
+                    new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(new ButtonBuilder()
+                            .setCustomId(`deck:redraw:${userId}:${i}`)
+                            .setLabel(`Redraw ${card}`)
+                            .setStyle(ButtonStyle.Danger))
+                ],
+            })
 
-            const message = await channel.send(cardMsgContent);
+            // place card in hand with message
             hand.push({ card, message });
-
-            const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button });
-
-            collector.on('collect', async (btnInteraction: ButtonInteraction) => {
-                if (btnInteraction.user.id !== interaction.user.id) {
-                    return btnInteraction.reply({ content: "These buttons aren't for you!", ephemeral: true });
-                }
-
-                if (btnInteraction.customId == `redraw_${i}`) {
-                    const redrawnCard = deck.shift()!;
-                    // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
-                    const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
-
-                    deck.splice(reinsertIndex, 0, hand[i].card);
-                    hand[i].card = redrawnCard;
-
-                    const redrawnCardImg = getCardImage(redrawnCard);
-                    
-                    const redrawnCardMsgContent: InteractionUpdateOptions = redrawnCardImg
-                        ? { components: [], files: [redrawnCardImg] }
-                        : { components: [], content: redrawnCard };
-
-                    btnInteraction.update(redrawnCardMsgContent)
-                }
-            });
         }
 
         const btnContinue = new ButtonBuilder()
@@ -211,6 +188,45 @@ module.exports = {
     },
 
     async createInteraction(interaction: Interaction) {
+        if (interaction.isButton()) {
+            // format of customId's: <commandName>:<action>:<userId>:variables_by_underscore
+            const [commandName, action, userId, variables] = interaction.customId.split(':');
+            if (commandName !== 'deck') return;
+
+            if (userId && userId !== interaction.user.id) {
+                return interaction.reply({ content: 'This button is not for you!', flags: MessageFlags.Ephemeral });
+            }
+
+            switch (action) {
+                case 'redraw':
+                    const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
+                    if (!deckSession) return;
+                    const deck = deckSession.deck;
+                    const hand = deckSession.hand;
+
+                    const i = parseInt(variables); // this action should only have one variable: card index
+
+                    const card = deck.shift()!;
+
+                    // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
+                    const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
+
+                    // insert card from hand into deck and update that hand's card name to the redrawn
+                    deck.splice(reinsertIndex, 0, hand[i].card);
+                    hand[i].card = card;
+
+                    const cardImg = getCardImage(card);
+
+                    interaction.update({
+                        content: cardImg ? '' : card,
+                        files: cardImg ? [cardImg] : [],
+                        components: [], // remove button by setting empty array
+                    })
+
+                    break;
+            }
+        }
+
         if (interaction.isModalSubmit()) {
             if (interaction.customId == 'deck_modal_fifth') {
                 const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
