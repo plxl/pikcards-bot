@@ -121,27 +121,7 @@ module.exports = {
 
         // hand out starting cards and allow re-drawing
         for (let i = 0; i < 4; i++) {
-            // pull card from deck
-            const card = deck.shift()!;
-
-            const cardImg = getCardImage(card);
-
-            const message = await channel.send({
-                content: cardImg ? '' : card,
-                files: cardImg ? [cardImg] : [],
-                components: [
-                    new ActionRowBuilder<ButtonBuilder>()
-                        .addComponents(new ButtonBuilder()
-                            .setCustomId(`deck:redraw:${userId}:${i}`)
-                            .setLabel(`Redraw ${card}`)
-                            .setStyle(ButtonStyle.Danger))
-                ],
-            })
-
-            // place card in hand with message
-            hand.push({ card, message });
-
-            console.log(`${logName} Draw Card: ${card}`)
+            await sendCardMessage(deckSession, logName, ['redraw'], i)
         }
 
         const btnContinue = new ButtonBuilder()
@@ -202,35 +182,20 @@ module.exports = {
 
             switch (action) {
                 case 'redraw':
-                    const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
-                    if (!deckSession) return;
-                    const deck = deckSession.deck;
-                    const hand = deckSession.hand;
-
                     const username = interaction.user.username;
                     const logName = `[@${username} | ${userId}]`;
 
+                    const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
+                    if (!deckSession) {
+                        console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)
+                        return interaction.reply({
+                            content: `An unknown error occurred and your deck session was not found.`,
+                            flags: MessageFlags.Ephemeral });
+                    }
+
                     const i = parseInt(variables); // this action should only have one variable: card index
 
-                    const card = deck.shift()!;
-
-                    // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
-                    const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
-
-                    // insert card from hand into deck and update that hand's card name to the redrawn
-                    deck.splice(reinsertIndex, 0, hand[i].card);
-                    const oldCard = hand[i].card; // for logging
-                    hand[i].card = card;
-
-                    const cardImg = getCardImage(card);
-
-                    interaction.update({
-                        content: cardImg ? '' : card,
-                        files: cardImg ? [cardImg] : [],
-                        components: [], // remove button by setting empty array
-                    })
-
-                    console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
+                    await redrawCard(deckSession, logName, i, interaction);
 
                     break;
             }
@@ -249,6 +214,67 @@ module.exports = {
         }
     },
 };
+
+async function redrawCard(deckSession: DeckSession, logName: string, i: number, interaction: ButtonInteraction) {
+    const deck = deckSession.deck;
+    const hand = deckSession.hand;
+
+    // draw new card first
+    const card = deck.shift()!;
+
+    // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
+    const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
+
+    // insert card from hand into deck and update that hand's card name to the redrawn
+    deck.splice(reinsertIndex, 0, hand[i].card);
+    const oldCard = hand[i].card; // for logging
+    hand[i].card = card;
+
+    const cardImg = getCardImage(card);
+
+    await interaction.update({
+        content: cardImg ? '' : card,
+        files: cardImg ? [cardImg] : [],
+        components: [], // remove button by setting empty array
+    })
+
+    console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
+}
+
+async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], index: number) {
+    const userId = deckSession.userId;
+    const deck = deckSession.deck;
+    const hand = deckSession.hand;
+    const channel = deckSession.channel;
+    if (!channel) {
+        return console.log(`ERROR: ${logName} Draw Card attempted but no channel was supplied`)
+    }
+
+    // pull card from deck
+    const card = deck.shift()!;
+
+    const cardImg = getCardImage(card);
+
+    const components = buttons.map(b => new ButtonBuilder()
+        .setCustomId(`deck:${b}:${userId}:${index}`)
+        .setLabel(`Redraw ${card}`)
+        .setStyle(b == 'redraw' ? ButtonStyle.Danger : ButtonStyle.Primary)
+    );
+
+    const message = await channel.send({
+        content: cardImg ? '' : card,
+        files: cardImg ? [cardImg] : [],
+        components: components.length > 0 ? [
+            new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(...components)
+        ] : [],
+    })
+
+    // place card in hand with message
+    hand.push({ card, message });
+
+    console.log(`${logName} Draw Card: ${card}`)
+}
 
 function getCardImage(name: string): string | null {
     // replace whitespace with _
