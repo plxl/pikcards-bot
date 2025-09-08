@@ -257,7 +257,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
 
     const components = buttons.map(b => new ButtonBuilder()
         .setCustomId(`deck:${b}:${userId}:${index}`)
-        .setLabel(`Redraw ${card}`)
+        .setLabel(`${toTitleCase(b)} ${card}`)
         .setStyle(b == 'redraw' ? ButtonStyle.Danger : ButtonStyle.Primary)
     );
 
@@ -298,4 +298,11 @@ function findPngFileRecursive(dir: string, target: string): string | null {
     }
 
     return null;
+}
+
+function toTitleCase(s: string) {
+    return s.replace(
+        /\w\S*/g,
+        text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+    );
 }
