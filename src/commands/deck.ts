@@ -241,7 +241,7 @@ async function redrawCard(deckSession: DeckSession, logName: string, i: number, 
     console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
 }
 
-async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], index: number) {
+async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], index: number, card: string | null = null) {
     const userId = deckSession.userId;
     const deck = deckSession.deck;
     const hand = deckSession.hand;
@@ -250,8 +250,22 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
         return console.log(`ERROR: ${logName} Draw Card attempted but no channel was supplied`)
     }
 
+    if (!card) {
+        if (deck.length == 0) {
+            console.log(`${logName} Draw Card attempted but deck is empty`)
+            return;
+        }
     // pull card from deck
-    const card = deck.shift()!;
+        card = deck.shift()!;
+    }
+
+    // if card is already supplied, then assume that deck handling has already been done
+    // this allows this function to be used to add cards to hand in specific instances where
+    // the card to be added does not exist in the deck currently
+
+    if (deckSession.hand.length == 10) {
+        return console.log(`${logName} Draw Card attempted but hand already has 10 cards`);
+    }
 
     const cardImg = getCardImage(card);
 
