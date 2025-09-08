@@ -258,7 +258,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
     const components = buttons.map(b => new ButtonBuilder()
         .setCustomId(`deck:${b}:${userId}:${index}`)
         .setLabel(`${toTitleCase(b)} ${card}`)
-        .setStyle(b == 'redraw' ? ButtonStyle.Danger : ButtonStyle.Primary)
+        .setStyle(b == 'redraw' ? ButtonStyle.Danger : ButtonStyle.Success)
     );
 
     const message = await channel.send({
