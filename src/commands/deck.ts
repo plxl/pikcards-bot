@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, ComponentType, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, MessageCreateOptions, DMChannel, NewsChannel, TextChannel, InteractionUpdateOptions, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags, ModalSubmitInteraction } from 'discord.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -124,96 +124,136 @@ module.exports = {
             await sendCardMessage(deckSession, logName, ['redraw'], i)
         }
 
-        const btnContinue = new ButtonBuilder()
-                .setCustomId('continue')
-                .setLabel('Continue')
-                .setStyle(ButtonStyle.Success)
-        const rowContinue = new ActionRowBuilder<ButtonBuilder>().addComponents(btnContinue);
-
-        const continueMsg = await interaction.followUp({
-            content: 'Let me know when you\'re ready for your fifth card.',
-            components: [rowContinue]
-        })
-
-        const collector = continueMsg.createMessageComponentCollector({ componentType: ComponentType.Button });
-        collector.on('collect', async (btnInteraction: ButtonInteraction) => {
-            if (btnInteraction.user.id !== interaction.user.id) {
-                return btnInteraction.reply({ content: "These buttons aren't for you!", ephemeral: true });
-            }
-
-            if (btnInteraction.customId == 'continue') {
-                // collectors.forEach(collector => {
-                //     if (collector && !collector.ended) collector.stop();
-                // })
-                hand.forEach(({ message }) => {
-                    message.edit({
-                        components: [],
-                    })
-                })
-
-                const retryModal = new ModalBuilder()
-                    .setCustomId('deck_modal_fifth')
-                    .setTitle('Pikcards')
-                    .addComponents(
-                        new ActionRowBuilder<TextInputBuilder>().addComponents(
-                            new TextInputBuilder()
-                                .setCustomId('txt_fifth')
-                                .setLabel('Select your Fifth Card from your deck:')
-                                .setStyle(TextInputStyle.Short)
-                                .setRequired(true),
-                        ),
-                    );
-
-                await btnInteraction.showModal(retryModal);
-                await btnInteraction.deleteReply();
-            }
+        // wait for user to press continue and the rest is handled in createInteraction()
+        interaction.followUp({
+            content: 'Let me know when you\'re ready to choose your 5th card.',
+            components: [
+                new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(new ButtonBuilder()
+                        .setCustomId(`deck:choosefifth:${userId}`)
+                        .setLabel('Choose Card #5')
+                        .setStyle(ButtonStyle.Success)
+                    )
+                ],
         });
     },
 
     async createInteraction(interaction: Interaction) {
-        if (interaction.isButton()) {
-            // format of customId's: <commandName>:<action>:<userId>:variables_by_underscore
-            const [commandName, action, userId, variables] = interaction.customId.split(':');
-            if (commandName !== 'deck') return;
+        if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-            if (userId && userId !== interaction.user.id) {
-                return interaction.reply({ content: 'This button is not for you!', flags: MessageFlags.Ephemeral });
-            }
+        // format of customId's: <commandName>:<action>:<userId>:variables_by_underscore
+        const [commandName, action, userId, variables] = interaction.customId.split(':');
+        if (commandName !== 'deck') return;
 
-            switch (action) {
-                case 'redraw':
-                    const username = interaction.user.username;
-                    const logName = `[@${username} | ${userId}]`;
-
-                    const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
-                    if (!deckSession) {
-                        console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)
-                        return interaction.reply({
-                            content: `An unknown error occurred and your deck session was not found.`,
-                            flags: MessageFlags.Ephemeral });
-                    }
-
-                    const i = parseInt(variables); // this action should only have one variable: card index
-
-                    await redrawCard(deckSession, logName, i, interaction);
-
-                    break;
-            }
+        if (userId && userId !== interaction.user.id) {
+            return interaction.reply({ content: 'This button is not for you!', flags: MessageFlags.Ephemeral });
         }
 
-        if (interaction.isModalSubmit()) {
-            if (interaction.customId == 'deck_modal_fifth') {
-                const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
-                if (!deckSession) return;
-                const card = interaction.fields.getTextInputValue('txt_fifth')?.toLowerCase().trim();
-                const cardImg = getCardImage(card);
-                await deckSession.channel?.send(cardImg
-                    ? { components: [], files: [cardImg] }
-                    : { components: [], content: card });
-            }
+        const username = interaction.user.username;
+        const logName = `[@${username} | ${userId}]`;
+        const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
+
+        if (!deckSession) {
+            console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)
+            return interaction.reply({
+                content: `An unknown error occurred and your deck session was not found.`,
+                flags: MessageFlags.Ephemeral });
+        }
+
+        switch (action) {
+            case 'redraw':
+                if (!interaction.isButton()) return;
+
+                const i = parseInt(variables); // this action should only have one variable: card index
+                await redrawCard(deckSession, logName, i, interaction as ButtonInteraction);
+                break;
+
+            case 'choosefifth':
+                if (!interaction.isButton()) return;
+
+                // remove message requesting the user to press continue
+                await askForFifthCard(interaction, userId);
+                interaction.deleteReply();
+                break;
+
+            case 'modalfifth':
+                if (!interaction.isModalSubmit()) return;
+
+                handleFifthCard(interaction, deckSession, logName);
+                break;
         }
     },
 };
+
+async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession: DeckSession, logName: string) {
+    const userId = deckSession.userId;
+    const deck = deckSession.deck;
+    const hand = deckSession.hand;
+    const card = interaction.fields
+        .getTextInputValue(`deck:txtfifth:${userId}`)
+        .toLowerCase()
+        .trim();
+
+    const cardInDeck = deck.indexOf(card);
+    if (cardInDeck == -1) {
+        console.log(`${logName} Draw 5th: Could not find '${card}' in deck`);
+        await interaction.reply({
+            content: `The card \`${card}\` was not found in your deck, please try again.`,
+            components: [
+                new ActionRowBuilder<ButtonBuilder>()
+                    .addComponents(new ButtonBuilder()
+                        .setCustomId(`deck:choosefifth:${userId}`)
+                        .setLabel('Choose Card #5')
+                        .setStyle(ButtonStyle.Success)
+                    )
+            ],
+        })
+    }
+    else {
+        // must defer reply because editing all previous messages may takes more than 3 seconds allowed by discord
+        // must also specify if it will be ephemeral now as it cannot be done later
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        // remove chosen card from deck
+        deck.splice(cardInDeck, 1);
+
+        // set all previous cards to also use the play button now
+        console.log(`${logName} Updating starting hand to show Play buttons...`)
+        hand.forEach(async ({ card, message }, index) => {
+            await message.edit({
+                components: [
+                    new ActionRowBuilder<ButtonBuilder>()
+                        .addComponents(new ButtonBuilder()
+                            .setCustomId(`deck:play:${userId}:${index}`)
+                            .setLabel(`Play ${card}`)
+                            .setStyle(ButtonStyle.Success)
+                        )
+                ]
+            });
+        });
+
+        await sendCardMessage(deckSession, logName, ['play'], 4, card); // fixed index of 4; this should ALWAYS be the 5th card
+
+        // discord requires either a reply or to delete the thinking message to the modal interaction to close it
+        // const allSetMessage = 'You\'re all set! You can dismiss this message and start playing when it\'s your turn.';
+        await interaction.deleteReply().catch(() => {});
+    }
+}
+
+async function askForFifthCard(interaction: ButtonInteraction, userId: string) {
+    await interaction.showModal(new ModalBuilder()
+        .setCustomId(`deck:modalfifth:${userId}`)
+        .setTitle('Pikcards')
+        .addComponents(new ActionRowBuilder<TextInputBuilder>()
+            .addComponents(new TextInputBuilder()
+                .setCustomId(`deck:txtfifth:${userId}`)
+                .setLabel('Select your Fifth Card from your deck:')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            )
+        )
+    );
+}
 
 async function redrawCard(deckSession: DeckSession, logName: string, i: number, interaction: ButtonInteraction) {
     const deck = deckSession.deck;
@@ -255,7 +295,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
             console.log(`${logName} Draw Card attempted but deck is empty`)
             return;
         }
-    // pull card from deck
+        // pull card from deck
         card = deck.shift()!;
     }
 
