@@ -1,22 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags, ModalSubmitInteraction } from 'discord.js';
-import path from 'path';
-import fs from 'fs';
 import { getCardImage, toTitleCase } from '../utils/helpers';
-
-interface CardWithMessage {
-    card: string,
-    message: Message,
-}
-
-interface DeckSession {
-    userId: string;
-    channel: TextChannel | DMChannel | NewsChannel | null;
-    deck: string[];
-    hand: CardWithMessage[];
-}
-
-const DECK_FILE = path.join(process.cwd(), 'storage', 'deck-sessions.json');
-let deckSessions: DeckSession[] | null;
+import { addDeckSession, getAllDeckSessions, getDeckSession } from '../lib/deckSessions';
+import { DeckSession } from '../types';
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -31,37 +16,6 @@ module.exports = {
         const userId = interaction.user.id;
         const username = interaction.user.username;
         const logName = `[@${username} | ${userId}]`;
-
-
-        // check if there is a previous deckSessions to load, if not, creates one
-        if (!deckSessions) {
-            try {
-                // use synchronous to avoid race condition with others using same command simultaneously
-                // this should only happen once when the bot first starts anyway
-                if (!fs.existsSync(DECK_FILE)) {
-                    throw new Error('deck_sessions_missing');
-                }
-                const rawData = fs.readFileSync(DECK_FILE, 'utf-8');
-                deckSessions = JSON.parse(rawData);
-                console.log(`Loaded ${deckSessions?.length} deck sessions from "${DECK_FILE}"`)
-            }
-            catch (err: any) {
-                if (err.message == 'deck_sessions_missing') {
-                    // deck-sessions.json didn't exist
-                    console.log('Previous deck-sessions.json was not found, starting with empty array');
-                }
-                else if (err instanceof SyntaxError) {
-                    // JSON parsing likely failed
-                    console.error('deck-sessions.json is malformed, starting with empty array');
-                }
-                else {
-                    // any other potential errors
-                    console.error('Failed to load deck-sessions.json:', err);
-                    console.log('Due to above error with deck-sessions.json, starting with empty array');
-                }
-                deckSessions = [];
-            }
-        }
 
 
         // get the channel the command was used in
@@ -80,7 +34,7 @@ module.exports = {
 
 
         // check if the user has an existing session, if not, create one
-        let deckSession = deckSessions!.find(session => session.userId == userId);
+        let deckSession = getDeckSession(userId);
         if (deckSession) {
             console.log(`${logName} Restoring deck session`);
             // TODO: Restore deck from json in the event of a bot crash
@@ -93,7 +47,7 @@ module.exports = {
                 deck: [],
                 hand: [],
             } as DeckSession
-            deckSessions!.push(deckSession);
+            addDeckSession(deckSession);
         }
 
 
@@ -112,9 +66,6 @@ module.exports = {
         deckSession.deck = [...deckInput].sort(() => Math.random() - 0.5);
         console.log(`${logName} Deck Shuffled:\n${deckSession.deck}\n---`)
 
-        // define local references
-        const deck = deckSession.deck;
-        const hand = deckSession.hand;
 
         // initial reply
         await interaction.reply('Your deck has been shuffled! I will now show you your first 4 cards, ' + 
@@ -152,7 +103,7 @@ module.exports = {
 
         const username = interaction.user.username;
         const logName = `[@${username} | ${userId}]`;
-        const deckSession = deckSessions?.find(deckSession => deckSession.userId == interaction.user.id);
+        const deckSession = getDeckSession(interaction.user.id);
 
         if (!deckSession) {
             console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)

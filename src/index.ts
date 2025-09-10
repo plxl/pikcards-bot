@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, Interaction } from 'discord.js';
 import dotenv from 'dotenv';
+import { getAllDeckSessions } from './lib/deckSessions';
 dotenv.config();
 
 // override console.log to print the date at the start
@@ -81,5 +82,8 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         console.error(error);
     }
 });
+
+// initialise deck sessions
+getAllDeckSessions();
 
 client.login(token);
