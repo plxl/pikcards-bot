@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags, ModalSubmitInteraction } from 'discord.js';
 import path from 'path';
 import fs from 'fs';
+import { getCardImage, toTitleCase } from '../utils/helpers';
 
 interface CardWithMessage {
     card: string,
@@ -235,7 +236,6 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
         await sendCardMessage(deckSession, logName, ['play'], 4, card); // fixed index of 4; this should ALWAYS be the 5th card
 
         // discord requires either a reply or to delete the thinking message to the modal interaction to close it
-        // const allSetMessage = 'You\'re all set! You can dismiss this message and start playing when it\'s your turn.';
         await interaction.deleteReply().catch(() => {});
     }
 }
@@ -270,7 +270,7 @@ async function redrawCard(deckSession: DeckSession, logName: string, i: number, 
     const oldCard = hand[i].card; // for logging
     hand[i].card = card;
 
-    const cardImg = getCardImage(card);
+    const cardImg = await getCardImage(card);
 
     await interaction.update({
         content: cardImg ? '' : card,
@@ -307,7 +307,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
         return console.log(`${logName} Draw Card attempted but hand already has 10 cards`);
     }
 
-    const cardImg = getCardImage(card);
+    const cardImg = await getCardImage(card);
 
     const components = buttons.map(b => new ButtonBuilder()
         .setCustomId(`deck:${b}:${userId}:${index}`)
@@ -328,35 +328,4 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
     hand.push({ card, message });
 
     console.log(`${logName} Draw Card: ${card}`)
-}
-
-function getCardImage(name: string): string | null {
-    // replace whitespace with _
-    const fileName = name.trim().replace(/\s+/g, '_').toLowerCase();
-    const assetsDir = path.join(process.cwd(), 'assets', 'card_images');
-    return findPngFileRecursive(assetsDir, fileName);
-}
-
-function findPngFileRecursive(dir: string, target: string): string | null {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-
-        if (entry.isDirectory()) {
-            const result = findPngFileRecursive(fullPath, target);
-            if (result) return result;
-        } else if (entry.isFile() && entry.name.toLowerCase().endsWith(`${target}.png`)) {
-            return fullPath;
-        }
-    }
-
-    return null;
-}
-
-function toTitleCase(s: string) {
-    return s.replace(
-        /\w\S*/g,
-        text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
-    );
 }
