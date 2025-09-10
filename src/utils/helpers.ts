@@ -15,7 +15,7 @@ async function findPngFileRecursive(dir: string, target: string): Promise<string
         const fullPath = path.join(dir, entry.name);
 
         if (entry.isDirectory()) {
-            const result = findPngFileRecursive(fullPath, target);
+            const result = await findPngFileRecursive(fullPath, target);
             if (result) return result;
         } else if (entry.isFile() && entry.name.toLowerCase().endsWith(`${target}.png`)) {
             return fullPath;
