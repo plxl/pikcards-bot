@@ -23,7 +23,7 @@ export function getAllDeckSessions(): DeckSession[] {
     return deckSessions!; // assert that the above method ensures it is not null
 }
 
-function loadOrCreateDeckSessions() {
+export function loadOrCreateDeckSessions() {
     try {
         // use synchronous to avoid race condition with others using same command simultaneously
         // this should only happen once when the bot first starts anyway
