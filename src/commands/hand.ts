@@ -20,7 +20,7 @@ module.exports = {
         const hand = deckSession.hand;
 
         interaction.reply({
-            content: hand.map(cwm => `- ${cwm.card}`).join('\n'),
+            content: hand.map(cwm => `- ${cwm.card} \`{${cwm.id}}\``).join('\n'),
             flags: MessageFlags.Ephemeral,
         });
     },

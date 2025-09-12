@@ -9,7 +9,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "discord.js": "^14.22.1",
-    "dotenv": "^15.0.1"
+    "dotenv": "^15.0.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.3",

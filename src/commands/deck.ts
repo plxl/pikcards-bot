@@ -2,6 +2,7 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, Bu
 import { getCardImage, toTitleCase } from '../utils/helpers';
 import { addDeckSession, getAllDeckSessions, getDeckSession } from '../lib/deckSessions';
 import { DeckSession } from '../types';
+import { v4 as uuidv4 } from "uuid";
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -73,7 +74,7 @@ module.exports = {
 
         // hand out starting cards and allow re-drawing
         for (let i = 0; i < 4; i++) {
-            await sendCardMessage(deckSession, logName, ['redraw'], i)
+            await sendCardMessage(deckSession, logName, ['redraw'], uuidv4())
         }
 
         // wait for user to press continue and the rest is handled in createInteraction()
@@ -113,12 +114,13 @@ module.exports = {
         }
 
         switch (action) {
-            case 'redraw':
+            case 'redraw': {
                 if (!interaction.isButton()) return;
 
-                const i = parseInt(variables); // this action should only have one variable: card index
-                await redrawCard(deckSession, logName, i, interaction as ButtonInteraction);
-                break;
+                const cardId = variables;
+
+                await redrawCard(deckSession, logName, cardId, interaction as ButtonInteraction);
+                break; }
 
             case 'choosefifth':
                 if (!interaction.isButton()) return;
@@ -171,12 +173,12 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
 
         // set all previous cards to also use the play button now
         console.log(`${logName} Updating starting hand to show Play buttons...`)
-        hand.forEach(async ({ card, message }, index) => {
+        hand.forEach(async ({ id, card, message }) => {
             await message.edit({
                 components: [
                     new ActionRowBuilder<ButtonBuilder>()
                         .addComponents(new ButtonBuilder()
-                            .setCustomId(`deck:play:${userId}:${index}`)
+                            .setCustomId(`deck:play:${userId}:${id}`)
                             .setLabel(`Play ${card}`)
                             .setStyle(ButtonStyle.Success)
                         )
@@ -184,7 +186,7 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
             });
         });
 
-        await sendCardMessage(deckSession, logName, ['play'], 4, card); // fixed index of 4; this should ALWAYS be the 5th card
+        await sendCardMessage(deckSession, logName, ['play'], uuidv4(), card); // fixed index of 4; this should ALWAYS be the 5th card
 
         // discord requires either a reply or to delete the thinking message to the modal interaction to close it
         await interaction.deleteReply().catch(() => {});
@@ -206,7 +208,7 @@ async function askForFifthCard(interaction: ButtonInteraction, userId: string) {
     );
 }
 
-async function redrawCard(deckSession: DeckSession, logName: string, i: number, interaction: ButtonInteraction) {
+async function redrawCard(deckSession: DeckSession, logName: string, id: string, interaction: ButtonInteraction) {
     const deck = deckSession.deck;
     const hand = deckSession.hand;
 
@@ -215,6 +217,12 @@ async function redrawCard(deckSession: DeckSession, logName: string, i: number, 
 
     // old card must be reinserted to the deck at a random position that is at least 10 cards from the top
     const reinsertIndex = Math.floor(Math.random() * (deck.length - 10)) + 10;
+
+    // get card index in hand from id
+    const i = hand.findIndex(cwm => cwm.id == id);
+    if (i == -1) {
+        return console.log(`ERROR: ${logName} Re-draw Card attempted with invalid card ID {${id}}\nHand:\n${hand}---`)
+    }
 
     // insert card from hand into deck and update that hand's card name to the redrawn
     deck.splice(reinsertIndex, 0, hand[i].card);
@@ -232,7 +240,7 @@ async function redrawCard(deckSession: DeckSession, logName: string, i: number, 
     console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
 }
 
-async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], index: number, card: string | null = null) {
+async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], id: string, card: string | null = null) {
     const userId = deckSession.userId;
     const deck = deckSession.deck;
     const hand = deckSession.hand;
@@ -261,7 +269,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
     const cardImg = await getCardImage(card);
 
     const components = buttons.map(b => new ButtonBuilder()
-        .setCustomId(`deck:${b}:${userId}:${index}`)
+        .setCustomId(`deck:${b}:${userId}:${id}`)
         .setLabel(`${toTitleCase(b)} ${card}`)
         .setStyle(b == 'redraw' ? ButtonStyle.Danger : ButtonStyle.Success)
     );
@@ -276,7 +284,7 @@ async function sendCardMessage(deckSession: DeckSession, logName: string, button
     })
 
     // place card in hand with message
-    hand.push({ card, message });
+    hand.push({ id, card, message });
 
     console.log(`${logName} Draw Card: ${card}`)
 }

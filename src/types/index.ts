@@ -1,6 +1,7 @@
 import { DMChannel, Message, NewsChannel, TextChannel } from "discord.js";
 
 export interface CardWithMessage {
+    id: string,
     card: string,
     message: Message,
 }
