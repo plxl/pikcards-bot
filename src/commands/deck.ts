@@ -122,19 +122,36 @@ module.exports = {
                 await redrawCard(deckSession, logName, cardId, interaction as ButtonInteraction);
                 break; }
 
-            case 'choosefifth':
+            case 'choosefifth': {
                 if (!interaction.isButton()) return;
 
-                // remove message requesting the user to press continue
                 await askForFifthCard(interaction, userId);
-                interaction.deleteReply();
-                break;
+                break; }
 
-            case 'modalfifth':
+            case 'modalfifth': {
                 if (!interaction.isModalSubmit()) return;
 
+                // attempt to fetch and remove the message that initially opened the modal
+                const prevMessageId = variables;
+                const channel = deckSession.channel;
+
+                try {
+                    const message = await channel?.messages.fetch({
+                        message: prevMessageId,
+                        cache: true,
+                    });
+                
+                    if (!message) {
+                        console.warn(`${logName}: Failed to fetch message for 5th card modal (ID: ${prevMessageId})`);
+                    } else {
+                        await message.delete();
+                    }
+                } catch (err) {
+                    console.error(`${logName}: Error fetching or deleting message (ID: ${prevMessageId})`, err);
+                }
+
                 handleFifthCard(interaction, deckSession, logName);
-                break;
+                break; }
         }
     },
 };
@@ -190,12 +207,16 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
 
         // discord requires either a reply or to delete the thinking message to the modal interaction to close it
         await interaction.deleteReply().catch(() => {});
+        await interaction.followUp({
+            content: 'You\'re all set! Type /draw to get your next card at the start of your turn.',
+            flags: MessageFlags.Ephemeral,
+        });
     }
 }
 
 async function askForFifthCard(interaction: ButtonInteraction, userId: string) {
     await interaction.showModal(new ModalBuilder()
-        .setCustomId(`deck:modalfifth:${userId}`)
+        .setCustomId(`deck:modalfifth:${userId}:${interaction.message.id}`)
         .setTitle('Pikcards')
         .addComponents(new ActionRowBuilder<TextInputBuilder>()
             .addComponents(new TextInputBuilder()
