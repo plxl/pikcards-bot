@@ -152,6 +152,33 @@ module.exports = {
 
                 handleFifthCard(interaction, deckSession, logName);
                 break; }
+
+                case 'play': {
+                    if (!interaction.isButton()) return;
+    
+                    // discord requires some form of "reply" so we send a "defer update" before deleting
+                    await interaction.deferUpdate();
+    
+                    const hand = deckSession.hand;
+                    const cardId = variables;
+    
+                    // get card index in hand from id
+                    const i = hand.findIndex(cwm => cwm.id == cardId);
+                    if (i == -1) {
+                        return console.log(`ERROR: ${logName} Play Card attempted with invalid card ID {${cardId}}\nHand:\n${hand}---`)
+                    }
+    
+                    // delete message and remove card from hand
+                    const message = hand[i].message;
+                    if (message.id !== interaction.message.id) {
+                        console.log(`WARNING: ${logName} Interaction Message ID !== stored card Message ID:\n` +
+                            `Interaction MID: ${interaction.message.id} | Card Stored MID: ${message.id}`);
+                    }
+    
+                    await interaction.message.delete();
+                    hand.splice(i, 1);
+    
+                    break; }
         }
     },
 };
