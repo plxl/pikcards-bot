@@ -1,6 +1,6 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, Message, MessageFlags, ModalSubmitInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, MessageFlags, ModalSubmitInteraction } from 'discord.js';
 import { getCardImage, toTitleCase } from '../utils/helpers';
-import { addDeckSession, getAllDeckSessions, getDeckSession } from '../lib/deckSessions';
+import { addDeckSession, getDeckSession } from '../lib/deckSessions';
 import { DeckSession } from '../types';
 import { v4 as uuidv4 } from "uuid";
 
