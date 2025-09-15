@@ -4,184 +4,182 @@ import { addDeckSession, getDeckSession } from '../lib/deckSessions';
 import { DeckSession } from '../types';
 import { v4 as uuidv4 } from "uuid";
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('deck')
-        .setDescription('Sets up an interactable Pikcards deck.')
-        .addStringOption(option =>
-            option.setName('cards')
-                .setDescription('The cards in the deck, separated by commas.')
-                .setRequired(true)),
+export const data = new SlashCommandBuilder()
+    .setName('deck')
+    .setDescription('Sets up an interactable Pikcards deck.')
+    .addStringOption(option =>
+        option.setName('cards')
+            .setDescription('The cards in the deck, separated by commas.')
+            .setRequired(true));
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        const userId = interaction.user.id;
-        const username = interaction.user.username;
-        const logName = `[@${username} | ${userId}]`;
-
-
-        // get the channel the command was used in
-        const fetchedChannel = interaction.channel
-            ?? await interaction.client.channels
-                .fetch(interaction.channelId)
-                .catch(() => null);
-        
-        if (!fetchedChannel || !fetchedChannel.isTextBased()) {
-            console.log(`ERROR: ${logName} Failed to get fetch channel with ID ${interaction.channelId}`)
-            return interaction.reply({
-                content: 'ERROR: I may be lacking View Channel or similar permissions.',
-                flags: MessageFlags.Ephemeral });
-        }
-        const channel = fetchedChannel as TextChannel | DMChannel | NewsChannel;
+export async function execute(interaction: ChatInputCommandInteraction) {
+    const userId = interaction.user.id;
+    const username = interaction.user.username;
+    const logName = `[@${username} | ${userId}]`;
 
 
-        // check if the user has an existing session, if not, create one
-        let deckSession = getDeckSession(userId);
-        if (deckSession) {
-            console.log(`${logName} Restoring deck session`);
-            // TODO: Restore deck from json in the event of a bot crash
-        }
-        else {
-            console.log(`${logName} No deck session found... creating one now`);
-            deckSession = {
-                userId,
-                channel,
-                deck: [],
-                hand: [],
-            } as DeckSession
-            addDeckSession(deckSession);
-        }
+    // get the channel the command was used in
+    const fetchedChannel = interaction.channel
+        ?? await interaction.client.channels
+            .fetch(interaction.channelId)
+            .catch(() => null);
+    
+    if (!fetchedChannel || !fetchedChannel.isTextBased()) {
+        console.log(`ERROR: ${logName} Failed to get fetch channel with ID ${interaction.channelId}`)
+        return interaction.reply({
+            content: 'ERROR: I may be lacking View Channel or similar permissions.',
+            flags: MessageFlags.Ephemeral });
+    }
+    const channel = fetchedChannel as TextChannel | DMChannel | NewsChannel;
 
 
-        // TODO: switch to option string instead of default deck for testing
-        // let input = interaction.options.getString('cards', true)
-        let deckInput = 'Red Pikmin, Red Pikmin, Red Pikmin, Red Pikmin, Red Onion, Red Onion, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Onion, Yellow Onion, Doodlebug, Doodlebug, Doodlebug, Doodlebug, Bulborb Larva, Bulborb Larva, Bulborb Larva, Bulborb Larva, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Stellar Orb, Stellar Orb, Stellar Orb, Stellar Orb, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Sagittarius, Sagittarius, Survival Series, Survival Series'
-            .toLowerCase()
-            .split(',')
-            .map(s => s.trim());
-        if (deckInput.length != 40) {
-            console.log(`${logName} Deck had ${deckInput.length} entries when 40 were expected`)
-            return interaction.reply(`A deck needs exactly 40 cards, counted ${deckInput.length} cards.`);
-        }
+    // check if the user has an existing session, if not, create one
+    let deckSession = getDeckSession(userId);
+    if (deckSession) {
+        console.log(`${logName} Restoring deck session`);
+        // TODO: Restore deck from json in the event of a bot crash
+    }
+    else {
+        console.log(`${logName} No deck session found... creating one now`);
+        deckSession = {
+            userId,
+            channel,
+            deck: [],
+            hand: [],
+        } as DeckSession
+        addDeckSession(deckSession);
+    }
 
-        // shuffle the deck
-        deckSession.deck = [...deckInput].sort(() => Math.random() - 0.5);
-        console.log(`${logName} Deck Shuffled:\n${deckSession.deck}\n---`)
+
+    // TODO: switch to option string instead of default deck for testing
+    // let input = interaction.options.getString('cards', true)
+    let deckInput = 'Red Pikmin, Red Pikmin, Red Pikmin, Red Pikmin, Red Onion, Red Onion, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Onion, Yellow Onion, Doodlebug, Doodlebug, Doodlebug, Doodlebug, Bulborb Larva, Bulborb Larva, Bulborb Larva, Bulborb Larva, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Stellar Orb, Stellar Orb, Stellar Orb, Stellar Orb, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Sagittarius, Sagittarius, Survival Series, Survival Series'
+        .toLowerCase()
+        .split(',')
+        .map(s => s.trim());
+    if (deckInput.length != 40) {
+        console.log(`${logName} Deck had ${deckInput.length} entries when 40 were expected`)
+        return interaction.reply(`A deck needs exactly 40 cards, counted ${deckInput.length} cards.`);
+    }
+
+    // shuffle the deck
+    deckSession.deck = [...deckInput].sort(() => Math.random() - 0.5);
+    console.log(`${logName} Deck Shuffled:\n${deckSession.deck}\n---`)
 
 
-        // initial reply
-        await interaction.reply('Your deck has been shuffled! I will now show you your first 4 cards, ' + 
-            'and you may choose to re-draw each one, or not.');
+    // initial reply
+    await interaction.reply('Your deck has been shuffled! I will now show you your first 4 cards, ' + 
+        'and you may choose to re-draw each one, or not.');
 
-        // hand out starting cards and allow re-drawing
-        for (let i = 0; i < 4; i++) {
-            await sendCardMessage(deckSession, logName, ['redraw'], uuidv4())
-        }
+    // hand out starting cards and allow re-drawing
+    for (let i = 0; i < 4; i++) {
+        await sendCardMessage(deckSession, logName, ['redraw'], uuidv4())
+    }
 
-        // wait for user to press continue and the rest is handled in createInteraction()
-        interaction.followUp({
-            content: 'Let me know when you\'re ready to choose your 5th card.',
-            components: [
-                new ActionRowBuilder<ButtonBuilder>()
-                    .addComponents(new ButtonBuilder()
-                        .setCustomId(`deck:choosefifth:${userId}`)
-                        .setLabel('Choose Card #5')
-                        .setStyle(ButtonStyle.Success)
-                    )
-                ],
-        });
-    },
+    // wait for user to press continue and the rest is handled in createInteraction()
+    interaction.followUp({
+        content: 'Let me know when you\'re ready to choose your 5th card.',
+        components: [
+            new ActionRowBuilder<ButtonBuilder>()
+                .addComponents(new ButtonBuilder()
+                    .setCustomId(`deck:choosefifth:${userId}`)
+                    .setLabel('Choose Card #5')
+                    .setStyle(ButtonStyle.Success)
+                )
+            ],
+    });
+}
 
-    async createInteraction(interaction: Interaction) {
-        if (!interaction.isButton() && !interaction.isModalSubmit()) return;
+export async function createInteraction(interaction: Interaction) {
+    if (!interaction.isButton() && !interaction.isModalSubmit()) return;
 
-        // format of customId's: <commandName>:<action>:<userId>:variables_by_underscore
-        const [commandName, action, userId, variables] = interaction.customId.split(':');
-        if (commandName !== 'deck') return;
+    // format of customId's: <commandName>:<action>:<userId>:variables_by_underscore
+    const [commandName, action, userId, variables] = interaction.customId.split(':');
+    if (commandName !== 'deck') return;
 
-        if (userId && userId !== interaction.user.id) {
-            return interaction.reply({ content: 'This button is not for you!', flags: MessageFlags.Ephemeral });
-        }
+    if (userId && userId !== interaction.user.id) {
+        return interaction.reply({ content: 'This button is not for you!', flags: MessageFlags.Ephemeral });
+    }
 
-        const username = interaction.user.username;
-        const logName = `[@${username} | ${userId}]`;
-        const deckSession = getDeckSession(interaction.user.id);
+    const username = interaction.user.username;
+    const logName = `[@${username} | ${userId}]`;
+    const deckSession = getDeckSession(interaction.user.id);
 
-        if (!deckSession) {
-            console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)
-            return interaction.reply({
-                content: `An unknown error occurred and your deck session was not found.`,
-                flags: MessageFlags.Ephemeral });
-        }
+    if (!deckSession) {
+        console.log(`ERROR: ${logName} Button was made for this user, but could not find their deck session!`)
+        return interaction.reply({
+            content: `An unknown error occurred and your deck session was not found.`,
+            flags: MessageFlags.Ephemeral });
+    }
 
-        switch (action) {
-            case 'redraw': {
+    switch (action) {
+        case 'redraw': {
+            if (!interaction.isButton()) return;
+
+            const cardId = variables;
+
+            await redrawCard(deckSession, logName, cardId, interaction as ButtonInteraction);
+            break; }
+
+        case 'choosefifth': {
+            if (!interaction.isButton()) return;
+
+            await askForFifthCard(interaction, userId);
+            break; }
+
+        case 'modalfifth': {
+            if (!interaction.isModalSubmit()) return;
+
+            // attempt to fetch and remove the message that initially opened the modal
+            const prevMessageId = variables;
+            const channel = deckSession.channel;
+
+            try {
+                const message = await channel?.messages.fetch({
+                    message: prevMessageId,
+                    cache: true,
+                });
+            
+                if (!message) {
+                    console.warn(`${logName}: Failed to fetch message for 5th card modal (ID: ${prevMessageId})`);
+                } else {
+                    await message.delete();
+                }
+            } catch (err) {
+                console.error(`${logName}: Error fetching or deleting message (ID: ${prevMessageId})`, err);
+            }
+
+            handleFifthCard(interaction, deckSession, logName);
+            break; }
+
+            case 'play': {
                 if (!interaction.isButton()) return;
 
+                // discord requires some form of "reply" so we send a "defer update" before deleting
+                await interaction.deferUpdate();
+
+                const hand = deckSession.hand;
                 const cardId = variables;
 
-                await redrawCard(deckSession, logName, cardId, interaction as ButtonInteraction);
-                break; }
-
-            case 'choosefifth': {
-                if (!interaction.isButton()) return;
-
-                await askForFifthCard(interaction, userId);
-                break; }
-
-            case 'modalfifth': {
-                if (!interaction.isModalSubmit()) return;
-
-                // attempt to fetch and remove the message that initially opened the modal
-                const prevMessageId = variables;
-                const channel = deckSession.channel;
-
-                try {
-                    const message = await channel?.messages.fetch({
-                        message: prevMessageId,
-                        cache: true,
-                    });
-                
-                    if (!message) {
-                        console.warn(`${logName}: Failed to fetch message for 5th card modal (ID: ${prevMessageId})`);
-                    } else {
-                        await message.delete();
-                    }
-                } catch (err) {
-                    console.error(`${logName}: Error fetching or deleting message (ID: ${prevMessageId})`, err);
+                // get card index in hand from id
+                const i = hand.findIndex(cwm => cwm.id == cardId);
+                if (i == -1) {
+                    return console.log(`ERROR: ${logName} Play Card attempted with invalid card ID {${cardId}}\nHand:\n${hand}---`)
                 }
 
-                handleFifthCard(interaction, deckSession, logName);
-                break; }
+                // delete message and remove card from hand
+                const message = hand[i].message;
+                if (message.id !== interaction.message.id) {
+                    console.log(`WARNING: ${logName} Interaction Message ID !== stored card Message ID:\n` +
+                        `Interaction MID: ${interaction.message.id} | Card Stored MID: ${message.id}`);
+                }
 
-                case 'play': {
-                    if (!interaction.isButton()) return;
-    
-                    // discord requires some form of "reply" so we send a "defer update" before deleting
-                    await interaction.deferUpdate();
-    
-                    const hand = deckSession.hand;
-                    const cardId = variables;
-    
-                    // get card index in hand from id
-                    const i = hand.findIndex(cwm => cwm.id == cardId);
-                    if (i == -1) {
-                        return console.log(`ERROR: ${logName} Play Card attempted with invalid card ID {${cardId}}\nHand:\n${hand}---`)
-                    }
-    
-                    // delete message and remove card from hand
-                    const message = hand[i].message;
-                    if (message.id !== interaction.message.id) {
-                        console.log(`WARNING: ${logName} Interaction Message ID !== stored card Message ID:\n` +
-                            `Interaction MID: ${interaction.message.id} | Card Stored MID: ${message.id}`);
-                    }
-    
-                    await interaction.message.delete();
-                    hand.splice(i, 1);
-    
-                    break; }
-        }
-    },
-};
+                await interaction.message.delete();
+                hand.splice(i, 1);
+
+                break; }
+    }
+}
 
 async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession: DeckSession, logName: string) {
     const userId = deckSession.userId;
@@ -288,7 +286,7 @@ async function redrawCard(deckSession: DeckSession, logName: string, id: string,
     console.log(`${logName} Redraw Card #${i + 1} (Old: ${oldCard} | New: ${card})`)
 }
 
-async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], id: string, card: string | null = null) {
+export async function sendCardMessage(deckSession: DeckSession, logName: string, buttons: string[], id: string, card: string | null = null) {
     const userId = deckSession.userId;
     const deck = deckSession.deck;
     const hand = deckSession.hand;
