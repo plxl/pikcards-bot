@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('node:path');
 
@@ -28,10 +28,16 @@ module.exports = {
             delete require.cache[require.resolve(commandFile)];
             const newCommand = require(commandFile);
             interaction.client.commands.set(newCommand.data.name, newCommand);
-            await interaction.reply(`Command \`${newCommand.data.name}\` was reloaded!`);
+            await interaction.reply({
+                content: `Command \`${newCommand.data.name}\` was reloaded!`,
+                flags: MessageFlags.Ephemeral,
+            });
         } catch (error) {
             console.error(error);
-            await interaction.reply(`There was an error while reloading command \`${commandName}\`.`);
+            await interaction.reply({
+                content: `There was an error while reloading command \`${commandName}\`.`,
+                flags: MessageFlags.Ephemeral,
+            });
         }
     },
 };
