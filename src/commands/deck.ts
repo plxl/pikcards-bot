@@ -228,7 +228,7 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
             });
         });
 
-        await sendCardMessage(deckSession, logName, ['play'], uuidv4(), card); // fixed index of 4; this should ALWAYS be the 5th card
+        await sendCardMessage(deckSession, logName, ['play'], uuidv4(), card);
 
         // discord requires either a reply or to delete the thinking message to the modal interaction to close it
         await interaction.deleteReply().catch(() => {});
