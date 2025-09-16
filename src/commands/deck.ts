@@ -46,6 +46,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             channel,
             deck: [],
             hand: [],
+            flags: [],
         } as DeckSession
         addDeckSession(deckSession);
     }
@@ -229,6 +230,9 @@ async function handleFifthCard(interaction: ModalSubmitInteraction, deckSession:
         });
 
         await sendCardMessage(deckSession, logName, ['play'], uuidv4(), card);
+        
+        // update flags
+        deckSession.flags.push('fifth_drawn');
 
         // discord requires either a reply or to delete the thinking message to the modal interaction to close it
         await interaction.deleteReply().catch(() => {});

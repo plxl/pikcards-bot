@@ -19,6 +19,13 @@ module.exports = {
             });
         }
 
+        if (!deckSession.flags.includes('fifth_drawn')) {
+            return await interaction.reply({
+                content: 'You need to finish drawing your starting hand (select 5th card) before you can draw.',
+                flags: MessageFlags.Ephemeral,
+            });
+        }
+
         const storedChannelId = deckSession.channel?.id;
         const currentChannelId = interaction.channel?.id;
         if (storedChannelId && currentChannelId) {

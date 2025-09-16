@@ -11,4 +11,5 @@ export interface DeckSession {
     channel: TextChannel | DMChannel | NewsChannel | null;
     deck: string[];
     hand: CardWithMessage[];
+    flags: string[];
 }
