@@ -1,5 +1,4 @@
-node_modules
 .env
-.vscode/*
-!.vscode/tasks.json
-assets
+.vscode/
+node_modules/
+dist/
