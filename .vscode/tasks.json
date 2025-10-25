@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Pikcards Bot",
+      "type": "shell",
+      "command": "npx ts-node src/index.ts",
+      "group": "build",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy Commands",
+      "type": "shell",
+      "command": "npx ts-node src/deployCommands.ts",
+      "group": "build",
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+
+
