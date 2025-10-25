@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, ButtonInteraction, ButtonBuilder, ButtonStyle, ActionRowBuilder, DMChannel, NewsChannel, TextChannel, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction, MessageFlags, ModalSubmitInteraction } from 'discord.js';
 import { getCardImage, toTitleCase } from '../utils/helpers';
+import { cardFinder } from '../utils/CardFinder';
 import { addDeckSession, getDeckSession } from '../lib/deckSessions';
 import { DeckSession } from '../types';
 import { v4 as uuidv4 } from "uuid";
@@ -17,13 +18,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const username = interaction.user.username;
     const logName = `[@${username} | ${userId}]`;
 
-
     // get the channel the command was used in
     const fetchedChannel = interaction.channel
         ?? await interaction.client.channels
             .fetch(interaction.channelId)
             .catch(() => null);
-    
+
     if (!fetchedChannel || !fetchedChannel.isTextBased()) {
         console.log(`ERROR: ${logName} Failed to get fetch channel with ID ${interaction.channelId}`)
         return interaction.reply({
@@ -31,7 +31,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             flags: MessageFlags.Ephemeral });
     }
     const channel = fetchedChannel as TextChannel | DMChannel | NewsChannel;
-
 
     // check if the user has an existing session, if not, create one
     let deckSession = getDeckSession(userId);
@@ -51,14 +50,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         addDeckSession(deckSession);
     }
 
-
     // TODO: switch to option string instead of default deck for testing
-    const deckInput = interaction.options.getString('cards', true)
-    // 'Red Pikmin, Red Pikmin, Red Pikmin, Red Pikmin, Red Onion, Red Onion, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Onion, Yellow Onion, Doodlebug, Doodlebug, Doodlebug, Doodlebug, Bulborb Larva, Bulborb Larva, Bulborb Larva, Bulborb Larva, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Stellar Orb, Stellar Orb, Stellar Orb, Stellar Orb, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Sagittarius, Sagittarius, Survival Series, Survival Series'
+    let inputCards = interaction.options.getString('cards', true);
+    if (inputCards == "test")
+        inputCards = 'Red Pikmin, Red Pikmin, Red Pikmin, Red Pikmin, Red Onion, Red Onion, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Pikmin, Yellow Onion, Yellow Onion, Doodlebug, Doodlebug, Doodlebug, Doodlebug, Bulborb Larva, Bulborb Larva, Bulborb Larva, Bulborb Larva, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Burrowing Snagret, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Sovereign Bulblax, Stellar Orb, Stellar Orb, Stellar Orb, Stellar Orb, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Bulblax Kingdom, Sagittarius, Sagittarius, Survival Series, Survival Series'
+    
+    const deckInput = inputCards
         .toLowerCase()
         .split(',')
         .map(s => s.trim());
     if (deckInput.length != 40) {
+        if (deckInput.length == 1 && deckInput[0] == "test")
+
         console.log(`${logName} Deck had ${deckInput.length} entries when 40 were expected`)
         return interaction.reply(`A deck needs exactly 40 cards, counted ${deckInput.length} cards.`);
     }
@@ -279,7 +282,7 @@ async function redrawCard(deckSession: DeckSession, logName: string, id: string,
     const oldCard = hand[i].card; // for logging
     hand[i].card = card;
 
-    const cardImg = await getCardImage(card);
+    const cardImg = cardFinder.find(card);
 
     await interaction.update({
         content: cardImg ? '' : card,
@@ -318,7 +321,7 @@ export async function sendCardMessage(deckSession: DeckSession, logName: string,
         return 'hand_full';
     }
 
-    const cardImg = await getCardImage(card);
+    const cardImg = cardFinder.find(card);
 
     const components = buttons.map(b => new ButtonBuilder()
         .setCustomId(`deck:${b}:${userId}:${id}`)
