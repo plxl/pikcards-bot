@@ -26,5 +26,9 @@
     "resolvePackageJsonImports": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["bun", "node"],
-  }
+
+    "rootDir": "src",
+    "outDir": "dist",
+  },
+  "exclude": ["node_modules"]
 }
