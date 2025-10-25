@@ -3,6 +3,7 @@ import path from 'node:path';
 import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, Interaction } from 'discord.js';
 import dotenv from 'dotenv';
 import { loadOrCreateDeckSessions } from './lib/deckSessions';
+import { ClientWithCommands } from './types';
 dotenv.config();
 
 // override console.log to print the date at the start
@@ -13,10 +14,6 @@ console.log = (...args) => {
 
 const token = process.env.TOKEN!;
 if (!token) throw new Error('Discord bot token not found in .env!')
-
-interface ClientWithCommands extends Client {
-    commands: Collection<string, any>;
-}
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] }) as ClientWithCommands;
 

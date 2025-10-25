@@ -1,4 +1,4 @@
-import { DMChannel, Message, NewsChannel, TextChannel } from "discord.js";
+import { Client, Collection, DMChannel, Message, NewsChannel, TextChannel } from "discord.js";
 
 export interface CardWithMessage {
     id: string,
@@ -12,4 +12,8 @@ export interface DeckSession {
     deck: string[];
     hand: CardWithMessage[];
     flags: string[];
+}
+
+export interface ClientWithCommands extends Client {
+    commands: Collection<string, any>;
 }
