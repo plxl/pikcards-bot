@@ -12,5 +12,10 @@
   },
   "dependencies": {
     "discord.js": "^14.24.0"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bunx tsc --allowImportingTsExtensions false --noEmit false",
+    "start": "bun run dist/index.js"
   }
 }
