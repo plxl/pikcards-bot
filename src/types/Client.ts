@@ -1,5 +1,6 @@
+import type { DeckManager } from './DeckManager';
+import type { ClientOptions, SlashCommandBuilder, Interaction, ChatInputCommandInteraction } from 'discord.js';
 import { Client, Collection } from 'discord.js';
-import type { SlashCommandBuilder, Interaction, ChatInputCommandInteraction } from 'discord.js';
 
 export interface Command {
     data: SlashCommandBuilder;
@@ -9,4 +10,11 @@ export interface Command {
 
 export class ExtendedClient extends Client {
     commands: Collection<string, Command> = new Collection();
+
+    constructor(
+        public deckManager: DeckManager,
+        options: ClientOptions,
+    ) {
+        super(options);
+    }
 }
