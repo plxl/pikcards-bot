@@ -1,10 +1,10 @@
-import type { ClientWithCommands } from "../types/Client";
+import type { ExtendedClient } from "../types/Client";
 import type { Interaction, ChatInputCommandInteraction } from "discord.js";
 import { Events } from "discord.js";
 
 export default {
     name: Events.InteractionCreate,
-    async execute(interaction: Interaction, client: ClientWithCommands) {
+    async execute(interaction: Interaction, client: ExtendedClient) {
         try {
             if (interaction.isChatInputCommand()) {
                 const command = client.commands.get(interaction.commandName);

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import type { ClientWithCommands } from '../types/Client';
+import type { ExtendedClient } from '../types/Client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +20,7 @@ function getCommandFiles(dir: string): string[] {
     return files;
 }
 
-export async function registerCommands(client: ClientWithCommands) {
+export async function registerCommands(client: ExtendedClient) {
     client.commands.clear();
     const commandFiles = getCommandFiles(commandsDir);
 
@@ -39,7 +39,7 @@ export async function registerCommands(client: ClientWithCommands) {
     console.log(`Loaded ${client.commands.size} commands.`);
 }
 
-export async function reloadCommand(client: ClientWithCommands, commandName: string) {
+export async function reloadCommand(client: ExtendedClient, commandName: string) {
     const commandFiles = getCommandFiles(commandsDir);
     const targetFile = commandFiles.find((file) =>
         file.endsWith(`/${commandName}.ts`) || file.endsWith(`/${commandName}.js`)

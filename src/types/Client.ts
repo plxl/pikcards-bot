@@ -7,6 +7,6 @@ export interface Command {
     createInteraction(interaction: Interaction): Promise<void>;
 }
 
-export class ClientWithCommands extends Client {
+export class ExtendedClient extends Client {
     commands: Collection<string, Command> = new Collection();
 }

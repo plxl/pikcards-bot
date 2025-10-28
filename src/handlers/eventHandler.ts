@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pathToFileURL, fileURLToPath } from 'url';
-import type { ClientWithCommands } from '../types/Client';
+import type { ExtendedClient } from '../types/Client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +24,7 @@ function getEventFiles(dir: string): string[] {
     return files;
 }
 
-export async function registerEvents(client: ClientWithCommands) {
+export async function registerEvents(client: ExtendedClient) {
     const eventFiles = getEventFiles(eventsDir);
 
     for (const file of eventFiles) {
