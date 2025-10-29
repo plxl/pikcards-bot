@@ -8,13 +8,19 @@ export interface CardMessage {
     messageId: string;
 }
 
+export interface ChannelInfo {
+    id: string,
+    name: string,
+    guildId?: string,
+}
+
 export class DeckSession {
     #decksDir: string;
 
     constructor(
         decksDir: string,
         public userId: string,
-        public channelId: string,
+        public channel: ChannelInfo,
         public deck: string[],
         public hand: CardMessage[],
         public flags: string[],
@@ -26,7 +32,7 @@ export class DeckSession {
         return new DeckSession(
             decksDir,
             data.userId,
-            data.channelId,
+            data.channel,
             data.deck,
             data.hand,
             data.flags
@@ -34,11 +40,11 @@ export class DeckSession {
     }
 
     async save() {
-        const logName = `[@${this.userId} | #${this.channelId}]`;
+        const logName = `[@${this.userId} | #${this.channel.id}]`;
         console.log(`${logName} Saving deckSession...`);
 
         try {
-            const filename = path.join(this.#decksDir, `${this.userId}_${this.channelId}.json`);
+            const filename = path.join(this.#decksDir, `${this.userId}_${this.channel.id}.json`);
             const data = JSON.stringify(this);
 
             await fsp.mkdir(path.dirname(filename), { recursive: true });
@@ -48,7 +54,6 @@ export class DeckSession {
         catch (err) {
             console.error(`Error saving deckSession ${logName}:`, err);
         }
-        
     }
 }
 
@@ -80,7 +85,7 @@ export class DeckManager {
 
     async new(
         userId: string,
-        channelId: string,
+        channel: ChannelInfo,
         deck: string[],
         hand: CardMessage[],
         flags: string[]
@@ -88,7 +93,7 @@ export class DeckManager {
         const deckSession = new DeckSession(
             this.#decksDir,
             userId,
-            channelId,
+            channel,
             deck,
             hand,
             flags
@@ -99,7 +104,7 @@ export class DeckManager {
     }
 
     get(userId: string, channelId: string): DeckSession | undefined {
-        return this.decks.find(ds => ds.userId === userId && ds.channelId == channelId);
+        return this.decks.find(ds => ds.userId === userId && ds.channel.id == channelId);
     }
 
     getAll(userId: string): DeckSession[] {
@@ -107,7 +112,7 @@ export class DeckManager {
     }
 
     async remove(userId: string, channelId: string): Promise<boolean> {
-        const index = this.decks.findIndex(ds => ds.userId == userId && ds.channelId == channelId)
+        const index = this.decks.findIndex(ds => ds.userId == userId && ds.channel.id == channelId)
         if (index === -1) {
             console.error([
                 `Attempted to remove deckSession that could not be found.`,
