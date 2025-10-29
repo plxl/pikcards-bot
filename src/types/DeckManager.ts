@@ -111,7 +111,7 @@ export class DeckManager {
         return this.decks.filter(ds => ds.userId === userId);
     }
 
-    async remove(userId: string, channelId: string): Promise<boolean> {
+    async remove(userId: string, channelId: string, fileOnly: boolean = false): Promise<boolean> {
         const index = this.decks.findIndex(ds => ds.userId == userId && ds.channel.id == channelId)
         if (index === -1) {
             console.error([
@@ -127,7 +127,7 @@ export class DeckManager {
             // attempt to delete file before removing from decks array
             const filename = path.join(this.#decksDir, `${userId}_${channelId}.json`);
             await fsp.unlink(filename)
-            this.decks.splice(index, 1);
+            if (!fileOnly) this.decks.splice(index, 1);
         }
 
         catch (err) {
@@ -136,5 +136,27 @@ export class DeckManager {
         }
 
         return true;
+    }
+
+    async removeMulti(userId: string, channelIds: string[]): Promise<{ succeeded: string[]; failed: string[] }> {
+        // run file removal in parallel
+        const results = await Promise.all(
+            channelIds.map(async (channelId) => {
+                const removed = await this.remove(userId, channelId, true);
+                if (!removed) return channelId;
+                return null;
+            })
+        )
+
+        const failed = results.filter((id): id is string => id !== null);
+        const succeeded = channelIds.filter(id => !failed.includes(id));
+
+        // * remove only successful removals from decks array
+        for (const channelId of succeeded) {
+            const index = this.decks.findIndex(ds => ds.userId == userId && ds.channel.id == channelId)
+            this.decks.splice(index, 1);
+        }
+
+        return { succeeded, failed };
     }
 }
