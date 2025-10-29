@@ -75,7 +75,7 @@ export class DeckManager {
                 const data = JSON.parse(fs.readFileSync(path.join(this.#decksDir, file), 'utf-8'));
                 return DeckSession.fromJSON(this.#decksDir, data);
             });
-            console.log(`Successfully loaded ${this.decks.length} deck sessions.`);
+            console.log(`Loaded ${this.decks.length} deck sessions.`);
 
         } catch (err) {
             console.error("Error loading decks:", err);
