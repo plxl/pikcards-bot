@@ -39,38 +39,35 @@ export async function registerCommands(client: ExtendedClient) {
     console.log(`Loaded ${client.commands.size} commands.`);
 }
 
-export async function reloadCommand(client: ExtendedClient, commandName: string) {
+export async function reloadCommand(client: ExtendedClient, commandName: string): Promise<Boolean> {
     const commandFiles = getCommandFiles(commandsDir);
-    const targetFile = commandFiles.find((file) =>
-        file.endsWith(`/${commandName}.ts`) || file.endsWith(`/${commandName}.js`)
-    );
+    const targetFile = commandFiles.find((file) => path.parse(file).name === commandName);
 
     if (!targetFile) {
         console.warn(`Command "${commandName}" not found.`);
-        return;
+        return false;
     }
 
     try {
         // clear module from cache so import re-runs fresh
         const modulePath = pathToFileURL(targetFile).href;
-        // bun automatically reloads, others we need to delete from
-        if (!(globalThis as any).Bun) {
-            // @ts-ignore
-            delete import.meta.cache?.[modulePath];
-        }
+        if ((globalThis as any).Bun)
+            delete require.cache[require.resolve(targetFile)]; // only works for bun
 
         const newModule = await import(`${modulePath}?update=${Date.now()}`);
         const newCommand = (newModule.default ?? newModule);
 
         if (!newCommand?.data?.name) {
             console.warn(`Reload failed: invalid command export in ${targetFile}`);
-            return;
+            return false;
         }
 
         client.commands.set(newCommand.data.name, newCommand);
         console.log(`Reloaded command "${newCommand.data.name}".`);
+        return true;
 
     } catch (err) {
         console.error(`Failed to reload command "${commandName}":`, err);
+        return false;
     }
 }
