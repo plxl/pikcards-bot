@@ -17,7 +17,7 @@ export default {
         const username = interaction.user.username;
         const logName = `[@${username} | ${userId}] [/deck]`;
         const channelId = interaction.channelId;
-        const channel = interaction.channel ?? await client.channels.fetch(channelId).catch(() => {});
+        const channel = interaction.channel ?? await client.channels.fetch(channelId).catch(() => { });
         let channelName;
 
         if (channel?.type === ChannelType.DM)
@@ -47,5 +47,19 @@ export default {
                 flags: MessageFlags.Ephemeral,
             });
         }
+
+        for (const card of deckSession.deck) {
+            deckSession.hand.push({
+                id: card,
+                name: card,
+                messageId: card,
+            });
+        }
+        deckSession.save();
+
+        await interaction.reply({
+            content: "`[command under construction]`",
+            flags: MessageFlags.Ephemeral,
+        });
     },
 }
