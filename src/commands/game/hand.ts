@@ -19,6 +19,12 @@ export default {
             .map(channelId => `- <#${channelId}>`)
             .join("\n");
 
+        if (deckSessionChannelIds.length === 0)
+            return await interaction.reply({
+                content: "You aren't currently playing any games. Start with \`/deck\`!",
+                flags: MessageFlags.Ephemeral,
+            });
+
         // early return if the user is not currently playing in this channel
         if (!deckSessionChannelIds.includes(channelId))
             return await interaction.reply({
