@@ -6,6 +6,10 @@ export default {
     data: new SlashCommandBuilder()
         .setName('deck')
         .setDescription('Sets up an interactable Pikcards deck.')
+        .addUserOption(option =>
+            option.setName("opponent")
+                .setDescription("Your opponent for this game.")
+                .setRequired(true))
         .addStringOption(option =>
             option.setName('cards')
                 .setDescription('The cards in the deck, separated by commas.')
@@ -19,6 +23,8 @@ export default {
         const channelId = interaction.channelId;
         const channel = interaction.channel ?? await client.channels.fetch(channelId).catch(() => { });
         let channelName;
+
+        const opponentId = interaction.options.getUser("opponent", true).id;
 
         if (channel?.type === ChannelType.DM)
             channelName = `DM with ${interaction.user.username}`;
@@ -35,6 +41,7 @@ export default {
                     name: channelName,
                     guildId: interaction.guild?.id,
                 },
+                opponentId,
                 ["1", "2", "3", "4"],
                 [],
                 []

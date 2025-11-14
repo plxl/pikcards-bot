@@ -21,6 +21,7 @@ export class DeckSession {
         decksDir: string,
         public userId: string,
         public channel: ChannelInfo,
+        public opponentId: string,
         public deck: string[],
         public hand: CardMessage[],
         public flags: string[],
@@ -33,6 +34,7 @@ export class DeckSession {
             decksDir,
             data.userId,
             data.channel,
+            data.opponentId,
             data.deck,
             data.hand,
             data.flags
@@ -86,6 +88,7 @@ export class DeckManager {
     async new(
         userId: string,
         channel: ChannelInfo,
+        opponentId: string,
         deck: string[],
         hand: CardMessage[],
         flags: string[]
@@ -94,6 +97,7 @@ export class DeckManager {
             this.#decksDir,
             userId,
             channel,
+            opponentId,
             deck,
             hand,
             flags
@@ -105,6 +109,10 @@ export class DeckManager {
 
     get(userId: string, channelId: string): DeckSession | undefined {
         return this.decks.find(ds => ds.userId === userId && ds.channel.id == channelId);
+    }
+
+    getOpponent(userId: string, opponentId: string): DeckSession | undefined {
+        return this.decks.find(ds => ds.userId === opponentId && ds.opponentId === userId);
     }
 
     getAll(userId: string): DeckSession[] {
