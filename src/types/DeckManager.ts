@@ -1,3 +1,4 @@
+import type { ExtendedClient } from './Client';
 import fs from 'fs';
 import fsp from 'fs/promises'
 import path from 'path';
@@ -64,6 +65,7 @@ export class DeckSession {
 export class DeckManager {
     #decksDir: string;
     public decks: DeckSession[] = [];
+    public client: ExtendedClient | undefined;
 
     constructor(decksDir: string) {
         this.#decksDir = decksDir;

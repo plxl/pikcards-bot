@@ -16,5 +16,6 @@ export class ExtendedClient extends Client {
         options: ClientOptions,
     ) {
         super(options);
+        this.deckManager.client = this;
     }
 }
