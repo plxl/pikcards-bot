@@ -1,6 +1,6 @@
 import type { ExtendedClient } from "../types/Client";
 import type { Interaction, ChatInputCommandInteraction } from "discord.js";
-import { Events } from "discord.js";
+import { Events, MessageFlags } from "discord.js";
 
 export default {
     name: Events.InteractionCreate,
@@ -24,7 +24,7 @@ export default {
             if (interaction.isRepliable())
                 await interaction.reply({
                     content: "An internal error occurred while processing this interaction.",
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 }).catch(() => { });
         }
     },
