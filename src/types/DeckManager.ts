@@ -1,3 +1,4 @@
+import type { Channel } from 'discord.js';
 import type { ExtendedClient } from './Client';
 import fs from 'fs';
 import fsp from 'fs/promises'
@@ -123,13 +124,16 @@ export class DeckManager {
 
     async remove(userId: string, channelId: string, fileOnly: boolean = false): Promise<boolean> {
         const index = this.decks.findIndex(ds => ds.userId == userId && ds.channel.id == channelId)
-        if (index === -1) {
+        if (index === -1 || this.decks.length <= index) {
             console.error([
                 `Attempted to remove deckSession that could not be found.`,
                 `User ID: ${userId} | Channel ID: ${channelId}`
             ].join("\n"));
             return false;
         }
+
+        const opponentId = this.decks[index]!.opponentId;
+        const opponent = this.getOpponent(userId, opponentId);
 
         const logName = `[@${userId} | #${channelId}]`;
         console.log(`${logName} Removing deckSession...`);
@@ -144,6 +148,23 @@ export class DeckManager {
             console.error(`Error removing deckSession ${logName}:`, err);
             return false;
         }
+
+        // inform opponent in respective channels that their game was ended by the other player
+        if (opponent && this.client) {
+            try {
+                let channel: Channel | undefined | null = this.client.channels.cache.get(opponent.channel.id);
+                if (!channel) channel = await this.client.channels.fetch(opponent.channel.id);
+                if (channel && channel.isSendable())
+                    await channel.send(`<@${opponentId}>, the game in this channel was ended by your opponent.`)
+                else
+                    console.warn("Unable to inform opponent that the game was ended: channel not found or not sendable.");
+
+            } catch (err) {
+                console.warn("Unable to inform opponent that the game was ended: likely missing access to channel");
+            }
+        }
+        else
+            console.warn(`Unable to inform opponent that the game was ended.`);
 
         return true;
     }
