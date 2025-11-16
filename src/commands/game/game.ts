@@ -5,13 +5,13 @@ import { ChannelType, MessageFlags, SlashCommandBuilder } from "discord.js";
 export default {
     data: new SlashCommandBuilder()
         .setName('game')
-        .setDescription('Sets up an interactable Pikcards deck.')
+        .setDescription('Start a Pikcards game with another user.')
         .addUserOption(option =>
             option.setName("opponent")
                 .setDescription("Your opponent for this game.")
                 .setRequired(true))
         .addStringOption(option =>
-            option.setName('cards')
+            option.setName('deck')
                 .setDescription('The cards in the deck, separated by commas.')
                 .setRequired(true)),
 
