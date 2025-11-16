@@ -4,7 +4,7 @@ import { ChannelType, MessageFlags, SlashCommandBuilder } from "discord.js";
 
 export default {
     data: new SlashCommandBuilder()
-        .setName('deck')
+        .setName('game')
         .setDescription('Sets up an interactable Pikcards deck.')
         .addUserOption(option =>
             option.setName("opponent")
