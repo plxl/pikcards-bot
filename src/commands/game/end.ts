@@ -9,10 +9,18 @@ export default {
         .addChannelOption(option =>
             option.setName("channel")
                 .setDescription("The channel in which the game you want to end is in.")
+                .setRequired(false))
+        .addBooleanOption(option =>
+            option.setName("end-all")
+                .setDescription("Optionally remove all games you're currently participating in.")
                 .setRequired(false)),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        handleEndSession(interaction, false);
+        const endAll = interaction.options.get("end-all", false);
+        if (endAll && endAll.value)
+            handleEndSession(interaction, true);
+        else
+            handleEndSession(interaction, false);
     },
 
     async createInteraction(interaction: Interaction) {
