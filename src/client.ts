@@ -5,7 +5,7 @@ import { ExtendedClient } from './types/Client';
 import { DeckManager } from './types/DeckManager';
 
 const __dirname = path.dirname(__filename);
-const decksDir = path.join(__dirname, '../data/decks');
+const decksDir = path.join(__dirname, '../data/games');
 if (!fs.existsSync(decksDir))
     fs.mkdirSync(decksDir, { recursive: true });
 
